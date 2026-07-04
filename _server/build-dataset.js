@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outputDir = join(__dirname, "output");
-const dataDir = join(__dirname, "..", "src", "data");
+// served as a static file and fetched at runtime — keeping it out of the JS
+// bundle keeps first paint fast and lets the browser cache data separately
+const dataDir = join(__dirname, "..", "public", "data");
 const portraitsDir = join(__dirname, "..", "public", "portraits");
 const enrichFile = join(outputDir, "enrich.json");
 
@@ -93,4 +95,4 @@ const stats = {
   withCoordinates: merged.filter((p) => p.coord).length,
   withOccupation: merged.filter((p) => p.occupations.length).length,
 };
-console.log(`-> src/data/people.json`, JSON.stringify(stats));
+console.log(`-> public/data/people.json`, JSON.stringify(stats));

@@ -17,6 +17,10 @@ export default {
       return this.peopleStore.people.length.toLocaleString("en-US");
     },
   },
+
+  mounted() {
+    this.peopleStore.load();
+  },
 };
 </script>
 

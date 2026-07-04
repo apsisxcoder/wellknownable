@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const people = JSON.parse(readFileSync(join(__dirname, "..", "src", "data", "people.json"), "utf8"));
+const people = JSON.parse(readFileSync(join(__dirname, "..", "public", "data", "people.json"), "utf8"));
 const NOW = new Date().getFullYear();
 const pct = (n) => `${((n / people.length) * 100).toFixed(1)}%`;
 

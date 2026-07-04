@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
-import peopleData from "../data/people.json";
 
 export const usePeopleStore = defineStore("people", {
   state: () => ({
-    people: peopleData,
+    people: [],
+    loading: true,
     selectedId: null,
     flySeq: 0, // bumped on every select so re-selecting the same person still triggers the fly-to
   }),
@@ -28,10 +28,22 @@ export const usePeopleStore = defineStore("people", {
   },
 
   actions: {
+    // dataset ships as a static file, fetched once at startup: it stays out of
+    // the JS bundle (fast first paint) and the browser caches it separately
+    async load() {
+      try {
+        const res = await fetch(`${import.meta.env.BASE_URL}data/people.json`);
+        this.people = await res.json();
+      } finally {
+        this.loading = false;
+      }
+    },
+
     select(id) {
       this.selectedId = id;
       this.flySeq++;
     },
+
     clear() {
       this.selectedId = null;
     },
