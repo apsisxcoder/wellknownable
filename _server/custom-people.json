@@ -1,0 +1,44 @@
+[
+  {
+    "id": "CUSTOM-APSISXCODER",
+    "name": "apsisxcoder",
+    "description": "founder of wellknownable",
+    "birthYear": 1993,
+    "deathYear": null,
+    "image": null,
+    "sitelinks": 21,
+    "occupations": ["founder of wellknownable", "software developer"],
+    "country": "Turkey",
+    "birthPlace": "Yozgat",
+    "coord": { "lon": 34.8147, "lat": 39.8181 },
+    "wikipedia": "https://github.com/apsisxcoder"
+  },
+  {
+    "id": "CUSTOM-AVEL",
+    "name": "Avel",
+    "description": "staff psychologist at wellknownable · cat",
+    "birthYear": 2023,
+    "deathYear": null,
+    "image": null,
+    "sitelinks": 9,
+    "occupations": ["coworker", "psychologist", "cat"],
+    "country": "Turkey",
+    "birthPlace": "Ankara",
+    "coord": { "lon": 32.8541, "lat": 39.9208 },
+    "wikipedia": "https://github.com/apsisxcoder"
+  },
+  {
+    "id": "CUSTOM-KEDI",
+    "name": "Kedi",
+    "description": "staff philosopher at wellknownable · cat",
+    "birthYear": 2020,
+    "deathYear": null,
+    "image": null,
+    "sitelinks": 9,
+    "occupations": ["coworker", "philosopher", "cat"],
+    "country": "Turkey",
+    "birthPlace": "Yozgat",
+    "coord": { "lon": 34.8147, "lat": 39.8181 },
+    "wikipedia": "https://github.com/apsisxcoder"
+  }
+]

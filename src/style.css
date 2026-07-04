@@ -1,0 +1,43 @@
+:root {
+  --bg-deep: #070a14;
+  --bg-mid: #0d1222;
+  --ink: #ece7db;
+  --ink-muted: #8b93a7;
+  --gold: #e0b45c;
+  --gold-soft: rgba(224, 180, 92, 0.35);
+  --line: rgba(139, 147, 167, 0.18);
+  --card: rgba(16, 21, 38, 0.92);
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 700px at 70% -10%, #16203c 0%, transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, #131a30 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-deep), var(--bg-mid));
+  background-attachment: fixed;
+  overflow: hidden;
+}
+
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::selection {
+  background: var(--gold-soft);
+}
