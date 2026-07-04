@@ -93,11 +93,13 @@ export default {
     },
 
     // render the viewport plus a buffer band above/below, so portraits start
-    // loading before their row scrolls into view (less pop-in while dragging)
+    // loading before their row scrolls into view (less pop-in while dragging).
+    // av = atlas cell, resolved only for the handful of bars actually drawn.
     visibleBars() {
       return this.packedAll.bars
         .map((b) => ({ ...b, y: b.y - this.offsetY }))
-        .filter((b) => b.y > -160 && b.y < this.H + 160);
+        .filter((b) => b.y > -160 && b.y < this.H + 160)
+        .map((b) => ({ ...b, av: this.peopleStore.avatar(b.p.id) }));
     },
 
     maxOffsetY() {
@@ -199,15 +201,20 @@ export default {
       this.animHandle = requestAnimationFrame(step);
     },
 
+    // selection is URL-driven: navigate, and Home's route watcher does the rest
+    goHome() {
+      if (this.$route.name !== "home") this.$router.push("/");
+    },
+
     zoomCentury(start) {
       if (this.lastMoved) return;
-      this.peopleStore.clear();
+      this.goHome();
       this.flyTo(start + 50, 150, 1400);
     },
 
     pick(p) {
       if (this.lastMoved) return;
-      this.peopleStore.select(p.id);
+      this.$router.push(`/person/${p.slug}`);
     },
 
     svgX(clientX) {
@@ -269,7 +276,7 @@ export default {
     },
     onBackgroundClick() {
       if (this.lastMoved) return;
-      this.peopleStore.clear();
+      this.goHome();
     },
   },
 };
@@ -291,6 +298,9 @@ export default {
       <defs>
         <clipPath id="avatarClip" clipPathUnits="objectBoundingBox">
           <circle cx="0.5" cy="0.5" r="0.5" />
+        </clipPath>
+        <clipPath id="cellClip">
+          <circle cx="14" cy="14" r="14" />
         </clipPath>
         <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#252e52" />
@@ -356,8 +366,18 @@ export default {
             :stroke="b.p.id === peopleStore.selectedId ? '#f2cd83' : 'rgba(139,147,167,0.35)'"
             :stroke-dasharray="b.p.deathYear === null ? '5 5' : null"
           />
+          <g v-if="b.av" :transform="`translate(${b.x1 + 4}, ${b.y + 4})`" clip-path="url(#cellClip)">
+            <image
+              :href="b.av.url"
+              :x="-b.av.col * 28"
+              :y="-b.av.row * 28"
+              :width="28 * b.av.cols"
+              :height="28 * b.av.cols"
+              preserveAspectRatio="none"
+            />
+          </g>
           <image
-            v-if="b.p.image"
+            v-else-if="b.p.image"
             :href="thumb(b.p)"
             :x="b.x1 + 4"
             :y="b.y + 4"
@@ -367,7 +387,7 @@ export default {
             preserveAspectRatio="xMidYMid slice"
           />
           <circle v-else :cx="b.x1 + 18" :cy="b.y + 18" r="14" class="noimg" />
-          <text v-if="!b.p.image" :x="b.x1 + 18" :y="b.y + 22" class="init">{{ initials(b.p) }}</text>
+          <text v-if="!b.av && !b.p.image" :x="b.x1 + 18" :y="b.y + 22" class="init">{{ initials(b.p) }}</text>
           <text :x="b.x1 + 40" :y="b.y + 23" class="pname">
             {{ b.p.name }}
             <tspan class="years" dx="8">{{ fmtYear(b.p.birthYear) }}–{{ b.p.deathYear ? fmtYear(b.p.deathYear) : "?" }}</tspan>

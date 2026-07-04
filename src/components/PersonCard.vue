@@ -38,7 +38,7 @@ export default {
 <template>
   <transition name="card">
     <aside v-if="person" class="person-card">
-      <button class="close" aria-label="Close" @click="peopleStore.clear()">×</button>
+      <button class="close" aria-label="Close" @click="$router.push('/')">×</button>
       <div class="portrait-wrap">
         <img v-if="portrait" :src="portrait" :alt="person.name" />
         <div v-else class="no-portrait">{{ person.name[0] }}</div>

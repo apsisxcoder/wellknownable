@@ -42,6 +42,16 @@ export default {
       // self-hosted portraits are already 128px; only Commons URLs need a width param
       return p.image.startsWith("http") ? `${p.image}?width=64` : p.image;
     },
+    avatarStyle(p) {
+      const a = this.peopleStore.avatar(p.id);
+      if (!a) return null;
+      const s = 36;
+      return {
+        backgroundImage: `url(${a.url})`,
+        backgroundSize: `${s * a.cols}px ${s * a.cols}px`,
+        backgroundPosition: `-${a.col * s}px -${a.row * s}px`,
+      };
+    },
     initials(p) {
       return p.name
         .split(/\s+/)
@@ -62,7 +72,7 @@ export default {
       if (!p) return;
       this.query = p.name;
       this.open = false;
-      this.peopleStore.select(p.id);
+      this.$router.push(`/person/${p.slug}`);
       this.$refs.input.blur();
     },
     onEnter() {
@@ -103,7 +113,8 @@ export default {
         @mouseenter="highlighted = i"
         @mousedown.prevent="pick(p)"
       >
-        <img v-if="p.image" :src="thumb(p)" alt="" loading="lazy" />
+        <span v-if="avatarStyle(p)" class="thumb" :style="avatarStyle(p)"></span>
+        <img v-else-if="p.image" :src="thumb(p)" alt="" loading="lazy" />
         <span v-else class="fallback">{{ initials(p) }}</span>
         <span class="who">
           <span class="name">{{ p.name }}</span>
@@ -185,6 +196,7 @@ li.active {
 }
 
 li img,
+li .thumb,
 li .fallback {
   width: 36px;
   height: 36px;
@@ -192,6 +204,10 @@ li .fallback {
   object-fit: cover;
   flex: none;
   background: #232c4d;
+}
+
+li .thumb {
+  background-repeat: no-repeat;
 }
 
 li .fallback {
