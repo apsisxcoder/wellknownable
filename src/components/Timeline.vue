@@ -18,6 +18,8 @@ export default {
       offsetY: 0,
       NOW: new Date().getFullYear(),
       drag: null,
+      pointers: new Map(), // active pointers by id, for multi-touch pinch
+      pinch: null,
       lastMoved: false,
       animHandle: null,
     };
@@ -137,12 +139,18 @@ export default {
     size();
     this.resizeObserver = new ResizeObserver(size);
     this.resizeObserver.observe(this.$refs.wrap);
+    // a pointer can be released outside the svg — window catches those so a
+    // drag/pinch always ends cleanly
+    window.addEventListener("pointerup", this.onUp);
+    window.addEventListener("pointercancel", this.onUp);
     // opening shot: settle from far out into the overview
     this.flyTo(950, 2300, 1800);
   },
 
   beforeUnmount() {
     this.resizeObserver?.disconnect();
+    window.removeEventListener("pointerup", this.onUp);
+    window.removeEventListener("pointercancel", this.onUp);
     cancelAnimationFrame(this.animHandle);
   },
 
@@ -240,39 +248,85 @@ export default {
     // which would swallow clicks on bubbles and person bars
     onDown(e) {
       cancelAnimationFrame(this.animHandle);
-      this.drag = {
-        startX: e.clientX,
-        startY: e.clientY,
-        startCenter: this.camera.center,
-        startOffsetY: this.offsetY,
-        moved: false,
-      };
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.lastMoved = false;
-      // release can happen outside the svg — listen on window so the drag
-      // always ends, no matter where the button comes up
-      window.addEventListener("pointerup", this.onUp, { once: true });
+      if (this.pointers.size === 1) {
+        this.pinch = null;
+        this.drag = {
+          startX: e.clientX,
+          startY: e.clientY,
+          startCenter: this.camera.center,
+          startOffsetY: this.offsetY,
+          moved: false,
+        };
+      } else if (this.pointers.size === 2) {
+        this.drag = null;
+        this.beginPinch();
+      }
     },
     onMove(e) {
-      if (!this.drag) return;
-      // safety net: if the button was released while outside (missed pointerup),
-      // don't keep panning on re-entry
-      if (e.buttons === 0) {
-        this.drag = null;
-        return;
+      if (!this.pointers.has(e.pointerId)) return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pinch && this.pointers.size >= 2) {
+        this.updatePinch();
+      } else if (this.drag) {
+        const rect = this.$refs.svg.getBoundingClientRect();
+        const dxPx = ((e.clientX - this.drag.startX) / rect.width) * this.W;
+        const dyPx = ((e.clientY - this.drag.startY) / rect.height) * this.H;
+        if (Math.abs(dxPx) > 5 || Math.abs(dyPx) > 5) this.drag.moved = true;
+        this.camera.center = this.clampCenter(this.drag.startCenter - dxPx / this.pxPerYear);
+        this.offsetY = Math.min(this.maxOffsetY, Math.max(0, this.drag.startOffsetY - dyPx));
       }
-      const rect = this.$refs.svg.getBoundingClientRect();
-      const dxPx = ((e.clientX - this.drag.startX) / rect.width) * this.W;
-      const dyPx = ((e.clientY - this.drag.startY) / rect.height) * this.H;
-      if (Math.abs(dxPx) > 5 || Math.abs(dyPx) > 5) this.drag.moved = true;
-      this.camera.center = this.clampCenter(this.drag.startCenter - dxPx / this.pxPerYear);
-      this.offsetY = Math.min(this.maxOffsetY, Math.max(0, this.drag.startOffsetY - dyPx));
     },
-    onUp() {
-      if (!this.drag) return;
-      // pointerup fires before click: remember whether this was a pan so the
-      // click handlers right after can ignore it
-      this.lastMoved = this.drag.moved;
-      this.drag = null;
+    onUp(e) {
+      if (!this.pointers.has(e.pointerId)) return;
+      this.pointers.delete(e.pointerId);
+      if (this.pointers.size === 1) {
+        // one finger lifted mid-pinch: resume single-finger pan from the other
+        const [p] = [...this.pointers.values()];
+        this.pinch = null;
+        this.drag = { startX: p.x, startY: p.y, startCenter: this.camera.center, startOffsetY: this.offsetY, moved: true };
+      } else if (this.pointers.size === 0) {
+        // pointerup fires before click: remember a pan/pinch so click handlers ignore it
+        if (this.drag?.moved || this.pinch?.moved) this.lastMoved = true;
+        this.drag = null;
+        this.pinch = null;
+      }
+    },
+
+    beginPinch() {
+      const [a, b] = [...this.pointers.values()];
+      this.pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y), midX: (a.x + b.x) / 2, midY: (a.y + b.y) / 2, moved: false };
+    },
+    updatePinch() {
+      const [a, b] = [...this.pointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const midX = (a.x + b.x) / 2;
+      const midY = (a.y + b.y) / 2;
+      const rect = this.$refs.svg.getBoundingClientRect();
+
+      // two-finger pan: follow the midpoint, horizontally (time) and vertically (people)
+      const dPxX = ((midX - this.pinch.midX) / rect.width) * this.W;
+      this.camera.center = this.clampCenter(this.camera.center - dPxX / this.pxPerYear);
+      const dPxY = ((midY - this.pinch.midY) / rect.height) * this.H;
+      this.offsetY = Math.min(this.maxOffsetY, Math.max(0, this.offsetY - dPxY));
+
+      // zoom anchored at the midpoint
+      if (this.pinch.dist > 0 && dist > 0) {
+        const pxMid = ((midX - rect.left) / rect.width) * this.W;
+        const anchor = this.yearAt(pxMid);
+        const span = Math.min(MAX_SPAN, Math.max(MIN_SPAN, this.camera.span * (this.pinch.dist / dist)));
+        this.camera.span = span;
+        this.camera.center = this.clampCenter(anchor + (0.5 - pxMid / this.W) * span);
+      }
+
+      if (Math.abs(dist - this.pinch.dist) > 4 || Math.abs(dPxX) > 4 || Math.abs(dPxY) > 4) {
+        this.pinch.moved = true;
+        this.lastMoved = true;
+      }
+      this.pinch.dist = dist;
+      this.pinch.midX = midX;
+      this.pinch.midY = midY;
     },
     onBackgroundClick() {
       if (this.lastMoved) return;
