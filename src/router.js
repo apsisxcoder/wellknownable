@@ -10,9 +10,23 @@ export const routes = [
 ];
 
 export function createAppRouter() {
-  return createRouter({
+  const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes,
     scrollBehavior: () => ({ top: 0 }),
   });
+
+  // SPA page views: gtag's auto page_view is disabled (index.html), so send one
+  // on every navigation, including the first. page_path distinguishes each person.
+  router.afterEach((to) => {
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "page_view", {
+        page_path: to.fullPath,
+        page_location: window.location.href,
+        page_title: document.title,
+      });
+    }
+  });
+
+  return router;
 }

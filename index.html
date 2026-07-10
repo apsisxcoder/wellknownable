@@ -10,7 +10,9 @@
         dataLayer.push(arguments);
       }
       gtag("js", new Date());
-      gtag("config", "G-YYNHT77KFS");
+      // SPA: the router sends a page_view on every navigation (see router.js),
+      // so suppress the automatic one here to avoid double-counting the first load
+      gtag("config", "G-YYNHT77KFS", { send_page_view: false });
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
