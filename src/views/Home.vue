@@ -67,7 +67,7 @@ export default {
 
   <footer>
     <span>{{ peopleCount }} people · data: <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a></span>
-    <span class="brand">crafted by <strong>apsisxcoder</strong></span>
+    <span class="brand">crafted by <a href="https://github.com/apsisxcoder" target="_blank" rel="noopener">apsisxcoder</a></span>
   </footer>
 </template>
 
@@ -88,12 +88,12 @@ header {
 }
 
 .emblem {
-  height: 72px;
+  height: 86px;
   display: block;
 }
 
 .word {
-  font: 600 40px var(--font-display);
+  font: 600 47px var(--font-display);
   letter-spacing: 0.02em;
   color: var(--ink);
 }
@@ -135,10 +135,15 @@ footer a:hover {
   color: var(--ink);
 }
 
-.brand strong {
+.brand a {
   color: var(--gold);
   font-weight: 600;
   letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.brand a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 640px) {
@@ -152,11 +157,11 @@ footer a:hover {
   }
 
   .emblem {
-    height: 44px;
+    height: 52px;
   }
 
   .word {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .tagline {
