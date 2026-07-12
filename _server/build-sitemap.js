@@ -14,15 +14,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
 const BASE = "https://wellknownable.com";
 
-const INCLUDE_PEOPLE = false; // turn on once /person/<slug> pages are prerendered
+const INCLUDE_PEOPLE = true; // /person/<slug>/ pages are prerendered by build-prerender.js
 const TOP_N = 5000;
 
 const urls = [{ loc: `${BASE}/`, priority: "1.0" }];
 
 if (INCLUDE_PEOPLE) {
   const people = JSON.parse(readFileSync(join(publicDir, "data", "people.json"), "utf8"));
-  const top = [...people].sort((a, b) => b.sitelinks - a.sitelinks).slice(0, TOP_N);
-  for (const p of top) urls.push({ loc: `${BASE}/person/${personSlug(p)}`, priority: "0.6" });
+  const byFame = [...people].sort((a, b) => b.sitelinks - a.sitelinks).slice(0, TOP_N);
+  const custom = people.filter((p) => p.id.startsWith("CUSTOM-"));
+  const top = [...new Set([...byFame, ...custom])];
+  for (const p of top) urls.push({ loc: `${BASE}/person/${personSlug(p)}/`, priority: "0.6" });
 }
 
 const today = new Date().toISOString().slice(0, 10);
