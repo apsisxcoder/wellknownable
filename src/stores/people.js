@@ -20,6 +20,12 @@ export const usePeopleStore = defineStore("people", {
 
     bySlug: (state) => (slug) => state.slugIndex[slug] ?? null,
 
+    // fame-ordered once (cached) so the timeline can grab the top-N in a window
+    // without re-sorting all 24k people on every drag frame
+    peopleByFame(state) {
+      return [...state.people].sort((a, b) => b.sitelinks - a.sitelinks);
+    },
+
     // atlas cell for a person, or null if they aren't packed (fall back to their
     // individual portrait). Returns the source rect within the atlas image.
     avatar: (state) => (id) => {

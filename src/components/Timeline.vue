@@ -68,12 +68,29 @@ export default {
     // shares the window gets a row, reachable by dragging vertically.
     packedAll() {
       if (this.eraOpacity >= 1) return { bars: [], laneCount: 0 };
-      const right = this.left + this.camera.span;
+      const left = this.left;
+      const right = left + this.camera.span;
       const selId = this.peopleStore.selectedId;
-      const candidates = this.peopleStore.people
-        .filter((p) => p.birthYear < right && this.endYear(p) > this.left)
-        .sort((a, b) => (b.id === selId) - (a.id === selId) || b.sitelinks - a.sitelinks)
-        .slice(0, 100);
+
+      // walk the fame-ordered list and take the first 100 that fall in the window
+      // — short-circuits instead of filtering + sorting all 24k every drag frame
+      const candidates = [];
+      for (const p of this.peopleStore.peopleByFame) {
+        if (p.birthYear < right && this.endYear(p) > left) {
+          candidates.push(p);
+          if (candidates.length >= 100) break;
+        }
+      }
+      // keep the selected person visible and packed first
+      if (selId) {
+        const sel = this.peopleStore.selected;
+        if (sel && sel.birthYear < right && this.endYear(sel) > left) {
+          const i = candidates.indexOf(sel);
+          if (i > 0) candidates.splice(i, 1);
+          if (i !== 0) candidates.unshift(sel);
+          if (candidates.length > 100) candidates.pop();
+        }
+      }
 
       const lanes = [];
       const bars = [];
