@@ -75,6 +75,7 @@ Vue 3 (Options API) + Pinia + a hand-rolled SVG timeline. No chart library.
   domain; every person card links back to the source for full attribution
 - Notability idea: Wikipedia sitelink counts, in the spirit of the
   [Pantheon](https://pantheon.world) project
+- Globe texture: [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0)
 - Inspired by [ybogdanov/history-timeline](https://github.com/ybogdanov/history-timeline)
   and Wait But Why's *Horizontal History*
 

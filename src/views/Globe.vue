@@ -97,7 +97,7 @@ export default {
         .width(r.width)
         .height(r.height)
         .backgroundColor("rgba(0,0,0,0)")
-        .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-day.jpg`)
+        .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-day.webp`)
         .showAtmosphere(true)
         .atmosphereColor("#e0b45c")
         .atmosphereAltitude(0.16)
@@ -129,6 +129,16 @@ export default {
         if (Math.abs(alt - this._lastAlt) / this._lastAlt > 0.05) {
           this._lastAlt = alt;
           this.scheduleRefresh();
+        }
+      });
+
+      // max anisotropic filtering keeps the earth crisp at grazing angles / zoom
+      this.globe.onGlobeReady(() => {
+        const map = this.globe.globeMaterial()?.map;
+        const renderer = this.globe.renderer();
+        if (map && renderer) {
+          map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          map.needsUpdate = true;
         }
       });
     },
