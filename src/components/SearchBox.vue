@@ -5,6 +5,8 @@ import { usePeopleStore } from "../stores/people.js";
 export default {
   name: "SearchBox",
 
+  emits: ["select"],
+
   data() {
     return {
       query: "",
@@ -72,7 +74,7 @@ export default {
       if (!p) return;
       this.query = p.name;
       this.open = false;
-      this.$router.push(`/person/${p.slug}`);
+      this.$emit("select", p);
       this.$refs.input.blur();
     },
     onEnter() {

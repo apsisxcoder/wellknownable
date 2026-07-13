@@ -36,6 +36,9 @@ export default {
   },
 
   methods: {
+    goToPerson(p) {
+      this.$router.push(`/person/${p.slug}`);
+    },
     syncFromRoute(slug) {
       if (!this.peopleStore.people.length) return;
       if (!slug) {
@@ -52,12 +55,13 @@ export default {
 
 <template>
   <header>
+    <router-link to="/globe" class="switch">🌍 globe</router-link>
     <h1 class="logo">
       <img class="emblem" src="/emblem.png" alt="" />
       <span class="word">well<em>known</em>able</span>
     </h1>
     <p class="tagline">every well-known life in history, on a single timeline</p>
-    <SearchBox />
+    <SearchBox @select="goToPerson" />
   </header>
 
   <main>
@@ -73,11 +77,30 @@ export default {
 
 <style scoped>
 header {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 30px 20px 18px;
+}
+
+.switch {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.switch:hover {
+  color: var(--ink);
+  border-color: var(--gold-soft);
 }
 
 .logo {

@@ -17,7 +17,10 @@ const BASE = "https://wellknownable.com";
 const INCLUDE_PEOPLE = true; // /person/<slug>/ pages are prerendered by build-prerender.js
 const TOP_N = 5000;
 
-const urls = [{ loc: `${BASE}/`, priority: "1.0" }];
+const urls = [
+  { loc: `${BASE}/`, priority: "1.0" },
+  { loc: `${BASE}/globe/`, priority: "0.8" },
+];
 
 if (INCLUDE_PEOPLE) {
   const people = JSON.parse(readFileSync(join(publicDir, "data", "people.json"), "utf8"));

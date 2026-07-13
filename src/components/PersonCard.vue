@@ -16,6 +16,17 @@ export default {
       if (!p || p.deathYear === null) return null;
       return p.deathYear - p.birthYear;
     },
+    // use the shared texture atlas everywhere (no extra request, already loaded)
+    avatarStyle() {
+      const a = this.person && this.peopleStore.avatar(this.person.id);
+      if (!a) return null;
+      const s = 108;
+      return {
+        backgroundImage: `url(${a.url})`,
+        backgroundSize: `${s * a.cols}px ${s * a.cols}px`,
+        backgroundPosition: `-${a.col * s}px -${a.row * s}px`,
+      };
+    },
     portrait() {
       const img = this.person?.image;
       if (!img) return null;
@@ -31,6 +42,12 @@ export default {
     fmtYear(y) {
       return y < 0 ? `${-y} BC` : `${y}`;
     },
+    // on the timeline the selection lives in the URL, so closing navigates home;
+    // on the globe it's plain state, so closing just clears it (stays on /globe)
+    close() {
+      if (this.$route.name === "globe") this.peopleStore.clear();
+      else this.$router.push("/");
+    },
   },
 };
 </script>
@@ -38,9 +55,10 @@ export default {
 <template>
   <transition name="card">
     <aside v-if="person" class="person-card">
-      <button class="close" aria-label="Close" @click="$router.push('/')">×</button>
+      <button class="close" aria-label="Close" @click="close">×</button>
       <div class="portrait-wrap">
-        <img v-if="portrait" :src="portrait" :alt="person.name" />
+        <div v-if="avatarStyle" class="atlas-portrait" :style="avatarStyle"></div>
+        <img v-else-if="portrait" :src="portrait" :alt="person.name" />
         <div v-else class="no-portrait">{{ person.name[0] }}</div>
       </div>
       <h2>{{ person.name }}</h2>
@@ -104,6 +122,12 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.atlas-portrait {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
 }
 
 .no-portrait {

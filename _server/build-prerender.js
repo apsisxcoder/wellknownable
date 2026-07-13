@@ -155,4 +155,36 @@ for (const p of top) {
   if (written % 1000 === 0) console.log(`  ${written}/${top.length}`);
 }
 
-console.log(`Prerendered ${written} person pages -> dist/person/<slug>/index.html`);
+// SEO shell for the globe view (the WebGL globe itself is client-only, but the
+// page needs a real 200 with its own title/description to be indexable)
+{
+  const url = `${BASE}/globe/`;
+  const title = "Explore well-known people around the world | Wellknownable";
+  const desc = `Spin the globe and slide through history to see who was alive and where — ${people.length.toLocaleString("en-US")} well-known people mapped by birthplace, from 3000 BC to today.`;
+  const globeHtml = template
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
+    .replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(desc)}$2`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(title)}$2`)
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(desc)}$2`)
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
+    .replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${url}$2`)
+    .replace(
+      "</head>",
+      `<script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: title,
+        description: desc,
+        url,
+        isPartOf: { "@type": "WebSite", name: "Wellknownable", url: `${BASE}/` },
+      })}</script>\n</head>`
+    )
+    .replace(
+      '<div id="app"></div>',
+      `<div id="app"><div style="max-width:640px;margin:40px auto;padding:0 20px;font-family:Georgia,serif;color:#ece7db"><h1>Well-known people around the world</h1><p>Spin the globe and drag the year slider through history to see who was alive and where. <a href="/">Or explore the full timeline →</a></p></div></div>`
+    );
+  mkdirSync(join(distDir, "globe"), { recursive: true });
+  writeFileSync(join(distDir, "globe", "index.html"), globeHtml, "utf8");
+}
+
+console.log(`Prerendered ${written} person pages + globe -> dist/person/<slug>/index.html`);

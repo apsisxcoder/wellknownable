@@ -7,6 +7,8 @@ import Home from "./views/Home.vue";
 export const routes = [
   { path: "/", name: "home", component: Home },
   { path: "/person/:slug", name: "person", component: Home },
+  // lazy: globe.gl + three (~600 KB) only downloads when the globe is opened
+  { path: "/globe", name: "globe", component: () => import("./views/Globe.vue") },
 ];
 
 export function createAppRouter() {
