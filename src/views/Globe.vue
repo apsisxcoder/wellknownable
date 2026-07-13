@@ -248,6 +248,8 @@ export default {
 
     <div ref="globe" class="globe-canvas"></div>
 
+    <div class="wife-credit">the globe was my <span>beloved wife's</span> idea <em>♥</em></div>
+
     <div class="year-panel">
       <div class="year-readout">
         <span class="yr">{{ yearLabel }}</span>
@@ -282,6 +284,26 @@ export default {
   z-index: 1; /* own stacking context so globe.gl's html pins stay under the UI */
 }
 
+.wife-credit {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  z-index: 20;
+  font: italic 13px var(--font-display);
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.wife-credit span {
+  color: var(--gold);
+}
+
+.wife-credit em {
+  font-style: normal;
+  color: var(--gold);
+}
+
 .gsearch {
   position: absolute;
   top: 68px;
@@ -289,6 +311,16 @@ export default {
   transform: translateX(-50%);
   z-index: 20;
   width: min(520px, 90vw);
+}
+
+/* the bright day globe washes out the faint search bar — darken it here */
+.gsearch :deep(input) {
+  background: rgba(13, 18, 34, 0.8);
+  border-color: rgba(224, 180, 92, 0.28);
+}
+
+.gsearch :deep(input::placeholder) {
+  color: rgba(236, 231, 219, 0.65);
 }
 
 .gheader {

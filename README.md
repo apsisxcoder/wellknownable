@@ -84,6 +84,9 @@ Search for `apsisxcoder` on the timeline. While you're there, say hi to **Avel**
 (staff psychologist, cat, b. 2023) and **Kedi** (staff philosopher, cat, b. 2020) —
 they supervised the entire project and shut down the build server twice.
 
+The [globe](https://wellknownable.com/globe) — seeing who was alive and *where* —
+was my beloved wife's idea. ♥
+
 ## License
 
 [MIT](LICENSE) — built by [apsisxcoder](https://github.com/apsisxcoder),

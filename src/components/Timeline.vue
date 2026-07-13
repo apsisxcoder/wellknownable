@@ -162,8 +162,10 @@ export default {
       return this.left + px / this.pxPerYear;
     },
     endYear(p) {
-      // unknown death year: assume ~70 years, capped at today (person may be alive)
-      return p.deathYear ?? Math.min(p.birthYear + 70, this.NOW);
+      if (p.deathYear != null) return p.deathYear;
+      // no death date: someone born recently enough to plausibly still be living
+      // extends to today; a birth 100+ years ago gets an assumed ~80y lifespan
+      return this.NOW - p.birthYear <= 100 ? this.NOW : p.birthYear + 80;
     },
     fmtYear(y) {
       return y < 0 ? `${-y} BC` : `${y}`;
