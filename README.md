@@ -14,11 +14,11 @@
 </p>
 
 <p align="center">
-  <a href="https://wellknownable.com"><img src="docs/timeline.gif" alt="Searching a name and flying to their era on the timeline" width="720" /></a>
+  <a href="https://wellknownable.com"><img src="docs/timeline.gif" alt="Interactive history timeline — search a historical figure and fly to their era" width="720" /></a>
 </p>
 
 <p align="center">
-  <a href="https://wellknownable.com/globe"><img src="docs/globe.jpg" alt="The interactive globe of well-known people" width="720" /></a><br />
+  <a href="https://wellknownable.com/globe"><img src="docs/globe.jpg" alt="Interactive world globe of historical figures — see who was alive and where" width="720" /></a><br />
   <em><a href="https://wellknownable.com/globe">▶ the interactive globe</a> — drag a year and see who was alive, and where</em>
 </p>
 

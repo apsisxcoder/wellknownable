@@ -60,7 +60,7 @@ export default {
       <img class="emblem" src="/emblem.png" alt="" />
       <span class="word">well<em>known</em>able</span>
     </h1>
-    <p class="tagline">every well-known life in history, on a single timeline</p>
+    <p class="tagline">an interactive timeline &amp; map of every well-known life in history</p>
     <SearchBox @select="goToPerson" />
   </header>
 

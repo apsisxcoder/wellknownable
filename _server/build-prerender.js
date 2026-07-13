@@ -159,8 +159,8 @@ for (const p of top) {
 // page needs a real 200 with its own title/description to be indexable)
 {
   const url = `${BASE}/globe/`;
-  const title = "Explore well-known people around the world | Wellknownable";
-  const desc = `Spin the globe and slide through history to see who was alive and where — ${people.length.toLocaleString("en-US")} well-known people mapped by birthplace, from 3000 BC to today.`;
+  const title = "Interactive History Globe — See Who Was Alive and Where | Wellknownable";
+  const desc = `An interactive world globe of ${people.length.toLocaleString("en-US")} famous historical figures. Drag the year slider to see who was alive in any year — and where they were born, from 3000 BC to today.`;
   const globeHtml = template
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(desc)}$2`)
@@ -181,7 +181,7 @@ for (const p of top) {
     )
     .replace(
       '<div id="app"></div>',
-      `<div id="app"><div style="max-width:640px;margin:40px auto;padding:0 20px;font-family:Georgia,serif;color:#ece7db"><h1>Well-known people around the world</h1><p>Spin the globe and drag the year slider through history to see who was alive and where. <a href="/">Or explore the full timeline →</a></p></div></div>`
+      `<div id="app"><div style="max-width:640px;margin:40px auto;padding:0 20px;font-family:Georgia,serif;color:#ece7db"><h1>Interactive history globe — famous people around the world</h1><p>Spin the interactive globe and drag the year slider through history to see which historical figures were alive in any year, and where on the world map they were born. <a href="/">Or explore the full interactive history timeline →</a></p></div></div>`
     );
   mkdirSync(join(distDir, "globe"), { recursive: true });
   writeFileSync(join(distDir, "globe", "index.html"), globeHtml, "utf8");
