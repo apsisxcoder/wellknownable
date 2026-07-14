@@ -7,6 +7,9 @@ import Home from "./views/Home.vue";
 export const routes = [
   { path: "/", name: "home", component: Home },
   { path: "/person/:slug", name: "person", component: Home },
+  // "who was alive in <year>" — a text-first, indexable era page (prerendered per
+  // decade for SEO, but the route resolves any year the visitor types)
+  { path: "/alive-in/:year", name: "alive-in", component: () => import("./views/AliveIn.vue") },
   // lazy: globe.gl + three (~600 KB) only downloads when the globe is opened
   { path: "/globe", name: "globe", component: () => import("./views/Globe.vue") },
 ];

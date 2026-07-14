@@ -97,7 +97,7 @@ function jsonLd(p, url, contemps) {
   return JSON.stringify({
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    dateModified: new Date().toISOString().slice(0, 10),
+    dateModified: new Date().toISOString(), // full ISO 8601 datetime — Google rejects date-only here
     url,
     mainEntity: person,
   });
@@ -122,6 +122,11 @@ function staticContent(p, contemps) {
       <h2>Contemporaries</h2>
       <p>People who walked the earth at the same time as ${esc(p.name)}:</p>
       <ul>${links}</ul>
+      ${
+        p.birthYear >= 100
+          ? `<p><a href="/alive-in/${Math.floor(p.birthYear / 10) * 10}/">See everyone who was alive in ${Math.floor(p.birthYear / 10) * 10} →</a></p>`
+          : ""
+      }
       <p><a href="/">Explore the full timeline of ${people.length.toLocaleString("en-US")} well-known lives →</a></p>
     </div>`;
 }

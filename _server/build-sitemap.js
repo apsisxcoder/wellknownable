@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { personSlug } from "../src/lib/slug.js";
+import { aliveIn } from "../src/lib/lifespan.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
@@ -16,6 +17,8 @@ const BASE = "https://wellknownable.com";
 
 const INCLUDE_PEOPLE = true; // /person/<slug>/ pages are prerendered by build-prerender.js
 const TOP_N = 5000;
+const NOW = new Date().getFullYear();
+const MIN_ALIVE = 8; // keep in step with build-alive-in.js
 
 const urls = [
   { loc: `${BASE}/`, priority: "1.0" },
@@ -24,9 +27,20 @@ const urls = [
 
 if (INCLUDE_PEOPLE) {
   const people = JSON.parse(readFileSync(join(publicDir, "data", "people.json"), "utf8"));
-  const byFame = [...people].sort((a, b) => b.sitelinks - a.sitelinks).slice(0, TOP_N);
+  const byFame = [...people].sort((a, b) => b.sitelinks - a.sitelinks);
+
+  // /alive-in/<decade>/ era pages (prerendered by build-alive-in.js) — one per
+  // decade from the first dense-enough one to the current decade
+  const maxDecade = Math.floor(NOW / 10) * 10;
+  for (let d = 10; d <= maxDecade; d += 10) {
+    if (byFame.some((p) => aliveIn(p, d, NOW)) && byFame.filter((p) => aliveIn(p, d, NOW)).length >= MIN_ALIVE) {
+      for (let y = d; y <= maxDecade; y += 10) urls.push({ loc: `${BASE}/alive-in/${y}/`, priority: "0.5" });
+      break;
+    }
+  }
+
   const custom = people.filter((p) => p.id.startsWith("CUSTOM-"));
-  const top = [...new Set([...byFame, ...custom])];
+  const top = [...new Set([...byFame.slice(0, TOP_N), ...custom])];
   for (const p of top) urls.push({ loc: `${BASE}/person/${personSlug(p)}/`, priority: "0.6" });
 }
 

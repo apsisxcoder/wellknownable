@@ -67,6 +67,9 @@ export default {
         <span v-if="age" class="age">({{ age }} years)</span>
       </p>
       <p v-if="person.description" class="desc">{{ person.description }}</p>
+      <router-link v-if="person.birthYear >= 1" :to="`/alive-in/${person.birthYear}`" class="alive-link">
+        Who else was alive in {{ person.birthYear }}? →
+      </router-link>
       <div class="foot">
         <span class="badge">Wikipedia in {{ person.sitelinks }} languages</span>
         <a :href="sourceUrl" target="_blank" rel="noopener">source ↗</a>
@@ -165,6 +168,18 @@ h2 {
 
 .desc::first-letter {
   text-transform: uppercase;
+}
+
+.alive-link {
+  display: block;
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.alive-link:hover {
+  text-decoration: underline;
 }
 
 .foot {

@@ -16,7 +16,10 @@ export default {
   components: { PersonCard, SearchBox },
 
   data() {
-    return { year: 1500, MIN_YEAR, MAX_YEAR, aliveCount: 0 };
+    // an /alive-in page can deep-link here with ?year=1492 — start on that year
+    const q = parseInt(this.$route.query.year, 10);
+    const year = Number.isFinite(q) ? Math.max(MIN_YEAR, Math.min(MAX_YEAR, q)) : 1500;
+    return { year, MIN_YEAR, MAX_YEAR, aliveCount: 0 };
   },
 
   computed: {
