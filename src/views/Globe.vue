@@ -28,6 +28,12 @@ export default {
 
   watch: {
     year() {
+      // if the selected person isn't alive in the new year, drop the selection —
+      // closes the card, removes their forced pin, and clears the search box
+      const sel = this.peopleStore.selected;
+      if (sel && !(sel.birthYear <= this.year && this.endYear(sel) >= this.year)) {
+        this.peopleStore.clear();
+      }
       this.scheduleRefresh();
     },
     "peopleStore.selectedId"() {

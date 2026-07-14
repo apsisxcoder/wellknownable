@@ -15,6 +15,14 @@ export default {
     };
   },
 
+  watch: {
+    // when the selection is cleared (card closed, or slid past their lifetime),
+    // clear the search text too so it doesn't linger on a no-longer-shown person
+    "peopleStore.selectedId"(id) {
+      if (!id) this.query = "";
+    },
+  },
+
   computed: {
     ...mapStores(usePeopleStore),
 
