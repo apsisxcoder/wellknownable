@@ -19,7 +19,7 @@ export default {
     // an /alive-in page can deep-link here with ?year=1492 — start on that year
     const q = parseInt(this.$route.query.year, 10);
     const year = Number.isFinite(q) ? Math.max(MIN_YEAR, Math.min(MAX_YEAR, q)) : 1500;
-    return { year, MIN_YEAR, MAX_YEAR, aliveCount: 0 };
+    return { year, MIN_YEAR, MAX_YEAR, aliveCount: 0, rolling: false };
   },
 
   computed: {
@@ -85,6 +85,8 @@ export default {
       const pool = this.peopleStore.peopleByFame.slice(0, 2000);
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (!p) return;
+      this.rolling = true;
+      setTimeout(() => (this.rolling = false), 700);
       if (typeof window.gtag === "function") window.gtag("event", "surprise_me", { person_name: p.name });
       this.onSearch(p);
     },
@@ -276,7 +278,7 @@ export default {
 
     <div class="gsearch">
       <SearchBox @select="onSearch" />
-      <button class="dice" title="Surprise me — fly to a random famous person" @click="surprise">🎲</button>
+      <button class="dice" :class="{ rolling }" title="Surprise me — fly to a random famous person" @click="surprise">🎲</button>
     </div>
 
     <div ref="globe" class="globe-canvas"></div>
@@ -377,6 +379,18 @@ export default {
 .dice:hover {
   transform: rotate(20deg) scale(1.08);
   border-color: var(--gold);
+}
+
+/* the roll: two full tumbles with a bounce, like a die settling */
+.dice.rolling {
+  animation: diceroll 0.7s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes diceroll {
+  0% { transform: rotate(0) scale(1); }
+  35% { transform: rotate(380deg) scale(1.25); }
+  70% { transform: rotate(700deg) scale(0.92); }
+  100% { transform: rotate(720deg) scale(1); }
 }
 
 /* the bright day globe washes out the faint search bar — darken it here */
