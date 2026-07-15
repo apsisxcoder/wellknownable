@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const distDir = join(root, "dist");
 const BASE = "https://wellknownable.com";
-const TOP_N = 5000;
+const TOP_N = Infinity; // every person gets a real static page (was top-5000)
 const FAME_POOL = 2000; // contemporaries are picked among the most famous
 
 if (!existsSync(join(distDir, "index.html"))) {

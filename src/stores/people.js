@@ -90,6 +90,11 @@ export const usePeopleStore = defineStore("people", {
     select(id) {
       this.selectedId = id;
       this.flySeq++;
+      // GA key event: which people do visitors actually look at?
+      if (typeof window !== "undefined" && typeof window.gtag === "function") {
+        const p = this.selected;
+        if (p) window.gtag("event", "select_person", { person_id: p.id, person_name: p.name });
+      }
     },
 
     clear() {

@@ -47,6 +47,8 @@ export default {
   },
 
   async mounted() {
+    // GA key event: how many visitors open the globe at all?
+    if (typeof window.gtag === "function") window.gtag("event", "globe_open");
     await this.peopleStore.load();
     this.peopleStore.clear();
     this.initGlobe();
@@ -76,6 +78,15 @@ export default {
       // no death date: someone young enough to plausibly still be living counts
       // as alive to today; a birth 100+ years ago gets an assumed ~80y lifespan
       return MAX_YEAR - p.birthYear <= 100 ? MAX_YEAR : p.birthYear + 80;
+    },
+
+    // random famous person: fly to them like a search pick (the 🎲 button)
+    surprise() {
+      const pool = this.peopleStore.peopleByFame.slice(0, 2000);
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      if (!p) return;
+      if (typeof window.gtag === "function") window.gtag("event", "surprise_me", { person_name: p.name });
+      this.onSearch(p);
     },
 
     // search picked a person: jump the year into their lifetime, select them, and
@@ -263,7 +274,10 @@ export default {
       <router-link to="/" class="switch">↔<span class="lbl"> timeline</span></router-link>
     </header>
 
-    <div class="gsearch"><SearchBox @select="onSearch" /></div>
+    <div class="gsearch">
+      <SearchBox @select="onSearch" />
+      <button class="dice" title="Surprise me — fly to a random famous person" @click="surprise">🎲</button>
+    </div>
 
     <div ref="globe" class="globe-canvas"></div>
 
@@ -337,6 +351,32 @@ export default {
   transform: translateX(-50%);
   z-index: 20;
   width: min(520px, 90vw);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gsearch :deep(.searchbox) {
+  flex: 1;
+  width: auto;
+}
+
+.dice {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid rgba(224, 180, 92, 0.28);
+  border-radius: 50%;
+  background: rgba(13, 18, 34, 0.8);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.dice:hover {
+  transform: rotate(20deg) scale(1.08);
+  border-color: var(--gold);
 }
 
 /* the bright day globe washes out the faint search bar — darken it here */

@@ -16,7 +16,7 @@ const publicDir = join(__dirname, "..", "public");
 const BASE = "https://wellknownable.com";
 
 const INCLUDE_PEOPLE = true; // /person/<slug>/ pages are prerendered by build-prerender.js
-const TOP_N = 5000;
+const TOP_N = Infinity; // all pages are prerendered now (sitemap limit is 50k URLs; we're ~25k)
 const NOW = new Date().getFullYear();
 const MIN_ALIVE = 8; // keep in step with build-alive-in.js
 

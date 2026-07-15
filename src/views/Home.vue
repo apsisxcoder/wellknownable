@@ -39,6 +39,14 @@ export default {
     goToPerson(p) {
       this.$router.push(`/person/${p.slug}`);
     },
+    // random famous person: same fly-to as picking them in search (the 🎲 button)
+    surprise() {
+      const pool = this.peopleStore.peopleByFame.slice(0, 2000);
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      if (!p) return;
+      if (typeof window.gtag === "function") window.gtag("event", "surprise_me", { person_name: p.name });
+      this.goToPerson(p);
+    },
     syncFromRoute(slug) {
       if (!this.peopleStore.people.length) return;
       if (!slug) {
@@ -61,7 +69,10 @@ export default {
       <span class="word">well<em>known</em>able</span>
     </h1>
     <p class="tagline">an interactive timeline &amp; map of every well-known life in history</p>
-    <SearchBox @select="goToPerson" />
+    <div class="searchrow">
+      <SearchBox @select="goToPerson" />
+      <button class="dice" title="Surprise me — fly to a random famous person" @click="surprise">🎲</button>
+    </div>
   </header>
 
   <main>
@@ -131,6 +142,30 @@ header {
   font-size: 14px;
   color: var(--ink-muted);
   letter-spacing: 0.06em;
+}
+
+.searchrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dice {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.dice:hover {
+  transform: rotate(20deg) scale(1.08);
+  border-color: var(--gold);
 }
 
 main {

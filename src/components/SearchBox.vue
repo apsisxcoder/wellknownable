@@ -80,6 +80,10 @@ export default {
     },
     pick(p) {
       if (!p) return;
+      // GA key event: what do visitors search for (and find)?
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "search", { search_term: this.query.trim(), person_name: p.name });
+      }
       this.query = p.name;
       this.open = false;
       this.$emit("select", p);
