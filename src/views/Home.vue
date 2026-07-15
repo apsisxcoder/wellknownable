@@ -55,7 +55,7 @@ export default {
 
 <template>
   <header>
-    <router-link to="/globe" class="switch">🌍 globe</router-link>
+    <router-link to="/globe" class="switch">🌍<span class="lbl"> globe</span></router-link>
     <h1 class="logo">
       <img class="emblem" src="/emblem.png" alt="" />
       <span class="word">well<em>known</em>able</span>
@@ -173,6 +173,19 @@ footer a:hover {
   header {
     padding: 16px 12px 10px;
     gap: 6px;
+  }
+
+  /* tight header on phones: the pill collapses to just its icon so the label
+     can't ride over the logo */
+  .switch {
+    top: 12px;
+    right: 12px;
+    padding: 7px 11px;
+    font-size: 15px;
+  }
+
+  .switch .lbl {
+    display: none;
   }
 
   .logo {

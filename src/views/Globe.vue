@@ -260,7 +260,7 @@ export default {
         <img src="/emblem.png" alt="" />
         <span class="word">well<em>known</em>able</span>
       </router-link>
-      <router-link to="/" class="switch">↔ timeline</router-link>
+      <router-link to="/" class="switch">↔<span class="lbl"> timeline</span></router-link>
     </header>
 
     <div class="gsearch"><SearchBox @select="onSearch" /></div>
@@ -301,6 +301,13 @@ export default {
   position: absolute;
   inset: 0;
   z-index: 1; /* own stacking context so globe.gl's html pins stay under the UI */
+  /* hand pinch/drag to the globe's controls — without this the browser claims the
+     gesture as a page zoom and the globe never sees it (same fix as the timeline) */
+  touch-action: none;
+}
+
+.globe-canvas :deep(canvas) {
+  touch-action: none;
 }
 
 .wife-credit {
@@ -457,6 +464,30 @@ export default {
   font-size: 11px;
   color: var(--ink-muted);
   margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .gheader {
+    padding: 12px 14px;
+  }
+
+  .glogo img {
+    height: 34px;
+  }
+
+  .glogo .word {
+    font-size: 19px;
+  }
+
+  /* icon-only pill on phones so the label can't ride over the logo */
+  .switch {
+    padding: 7px 11px;
+    font-size: 15px;
+  }
+
+  .switch .lbl {
+    display: none;
+  }
 }
 </style>
 
