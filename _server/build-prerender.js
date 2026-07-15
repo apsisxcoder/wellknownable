@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { personSlug } from "../src/lib/slug.js";
+import { endYear as lifespanEnd } from "../src/lib/lifespan.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -30,7 +31,8 @@ const esc = (s) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const NOW = new Date().getFullYear();
-const endYear = (p) => p.deathYear ?? Math.min(p.birthYear + 70, NOW);
+// same 100-years-alive / assumed-80y heuristic as the timeline, globe and alive-in
+const endYear = (p) => lifespanEnd(p, NOW);
 const fmtYear = (y) => (y < 0 ? `${-y} BC` : `${y}`);
 const years = (p) => `${fmtYear(p.birthYear)}–${p.deathYear ? fmtYear(p.deathYear) : ""}`;
 
@@ -103,6 +105,20 @@ function jsonLd(p, url, contemps) {
   });
 }
 
+// era-page links for every decade of the person's life — each of the 5k person
+// pages feeds the /alive-in hubs, and every hub links 80 people back, so the two
+// page types keep lifting each other in the internal link graph
+function decadeLinks(p) {
+  const first = Math.max(10, Math.ceil(p.birthYear / 10) * 10); // era pages start at decade 10
+  const last = Math.min(endYear(p), NOW);
+  const links = [];
+  for (let d = first; d <= last; d += 10) {
+    links.push(`<a href="/alive-in/${d}/">${d}</a>`);
+  }
+  if (!links.length) return "";
+  return `<p>See everyone who was alive in ${links.join(" · ")}.</p>`;
+}
+
 function staticContent(p, contemps) {
   const occ = p.occupations?.length ? `<p class="pp-occ">${esc(p.occupations.join(" · "))}</p>` : "";
   const birth = p.birthPlace ? `<p class="pp-birth">Born in ${esc(p.birthPlace)}</p>` : "";
@@ -122,11 +138,7 @@ function staticContent(p, contemps) {
       <h2>Contemporaries</h2>
       <p>People who walked the earth at the same time as ${esc(p.name)}:</p>
       <ul>${links}</ul>
-      ${
-        p.birthYear >= 100
-          ? `<p><a href="/alive-in/${Math.floor(p.birthYear / 10) * 10}/">See everyone who was alive in ${Math.floor(p.birthYear / 10) * 10} →</a></p>`
-          : ""
-      }
+      ${decadeLinks(p)}
       <p><a href="/">Explore the full timeline of ${people.length.toLocaleString("en-US")} well-known lives →</a></p>
     </div>`;
 }
