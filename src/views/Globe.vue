@@ -534,6 +534,9 @@ export default {
   white-space: nowrap;
   opacity: 0;
   transition: opacity 0.15s;
+  /* labels are display-only: even at opacity 0 they'd otherwise catch the mouse
+     and block hovering/clicking the neighboring pin they overlap */
+  pointer-events: none;
 }
 .gpin:hover .av,
 .gpin.sel .av {
