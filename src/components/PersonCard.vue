@@ -208,12 +208,35 @@ h2 {
 }
 
 @media (max-width: 640px) {
+  /* phones get a bottom sheet: full width, docked to the bottom edge, capped
+     height with its own scroll — nothing clips below the viewport anymore */
   .person-card {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: auto;
-    padding: 16px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    max-height: 68vh; /* fallback */
+    max-height: 68dvh;
+    overflow-y: auto;
+    /* iOS WebKit won't scroll the sheet without being told the vertical pan
+       gesture belongs to it */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* the close button rides along while the sheet scrolls — always reachable */
+  .person-card .close {
+    position: sticky;
+    top: 0;
+    margin-left: auto;
+    display: block;
+    z-index: 2;
   }
 
   .portrait-wrap {

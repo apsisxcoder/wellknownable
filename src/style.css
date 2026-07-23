@@ -33,11 +33,25 @@ body {
 }
 
 #app {
-  height: 100vh;
+  height: 100vh; /* fallback for older browsers */
+  /* dvh tracks the REAL visible area on phones — with 100vh, mobile Chrome's
+     bottom bar sits on top of the year panel / footer */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
 ::selection {
   background: var(--gold-soft);
+}
+
+/* iOS Safari/Chrome auto-zoom into any focused input whose font is under 16px,
+   and often stays zoomed after blur. Force 16px on phones so focus never zooms
+   (the visual difference from 15/13px is negligible). */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

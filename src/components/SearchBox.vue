@@ -5,6 +5,12 @@ import { usePeopleStore } from "../stores/people.js";
 export default {
   name: "SearchBox",
 
+  props: {
+    // when set, search these items ({ id, name, icon, meta, sitelinks }) instead
+    // of people — the globe's ⚔️ mode passes wars+battles here
+    pool: { type: Array, default: null },
+  },
+
   emits: ["select"],
 
   data() {
@@ -37,7 +43,8 @@ export default {
         if (name.split(/\s+/).some((w) => w.startsWith(q))) return 2;
         return 3;
       };
-      return this.peopleStore.people
+      const items = this.pool ?? this.peopleStore.people;
+      return items
         .filter((p) => p.name.toLocaleLowerCase("tr").includes(q))
         .map((p) => ({ p, r: rank(p.name.toLocaleLowerCase("tr")) }))
         .sort((a, b) => a.r - b.r || b.p.sitelinks - a.p.sitelinks)
@@ -110,7 +117,7 @@ export default {
       ref="input"
       v-model="query"
       type="text"
-      placeholder="Search a name... Shakespeare, Galileo, Khayyam"
+      :placeholder="pool ? 'Search a war or battle... Waterloo, Stalingrad' : 'Search a name... Shakespeare, Galileo, Khayyam'"
       @input="onInput"
       @focus="onInput"
       @blur="onBlur"
@@ -127,12 +134,13 @@ export default {
         @mouseenter="highlighted = i"
         @mousedown.prevent="pick(p)"
       >
-        <span v-if="avatarStyle(p)" class="thumb" :style="avatarStyle(p)"></span>
+        <span v-if="p.icon" class="fallback icon">{{ p.icon }}</span>
+        <span v-else-if="avatarStyle(p)" class="thumb" :style="avatarStyle(p)"></span>
         <img v-else-if="p.image" :src="thumb(p)" alt="" loading="lazy" />
         <span v-else class="fallback">{{ initials(p) }}</span>
         <span class="who">
           <span class="name">{{ p.name }}</span>
-          <span class="meta">{{ p.birthYear }} – {{ p.deathYear ?? "?" }}<template v-if="p.description"> · {{ p.description }}</template></span>
+          <span class="meta"><template v-if="p.meta">{{ p.meta }}</template><template v-else>{{ p.birthYear }} – {{ p.deathYear ?? "?" }}<template v-if="p.description"> · {{ p.description }}</template></template></span>
         </span>
       </li>
     </ul>
@@ -229,6 +237,10 @@ li .fallback {
   place-items: center;
   font: 600 12px var(--font-ui);
   color: var(--ink-muted);
+}
+
+li .fallback.icon {
+  font-size: 17px;
 }
 
 .who {
