@@ -55,12 +55,26 @@ export default {
 
     bubbles() {
       const scale = Math.min(1, this.W / 1100);
-      return this.peopleStore.centuries.map((c) => ({
-        ...c,
-        x: this.xFor(c.start + 50),
-        y: this.H * 0.52,
-        r: Math.max(7, Math.min(64, 12 + Math.sqrt(c.count) * 1.55) * scale),
-      }));
+      // adaptive bucket: when a century gets less than ~72px on screen (phones
+      // zoomed out), merge centuries into 200/500/1000-year bubbles — otherwise
+      // fifty bubbles pile onto each other and the era view is unreadable
+      const sizes = [100, 200, 500, 1000];
+      const bucket = sizes.find((s) => s * this.pxPerYear >= 72) ?? 1000;
+      const merged = new Map();
+      for (const c of this.peopleStore.centuries) {
+        const b = Math.floor(c.start / bucket) * bucket;
+        merged.set(b, (merged.get(b) ?? 0) + c.count);
+      }
+      return [...merged.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([start, count]) => ({
+          start,
+          count,
+          span: bucket,
+          x: this.xFor(start + bucket / 2),
+          y: this.H * 0.52,
+          r: Math.max(7, Math.min(64, 12 + Math.sqrt(count) * 1.55) * scale),
+        }));
     },
 
     // famous first: the best-known people (and the selected one) always get a lane,
@@ -187,10 +201,18 @@ export default {
     fmtYear(y) {
       return y < 0 ? `${-y} BC` : `${y}`;
     },
-    fmtCentury(start) {
-      if (start < 0) return `${-start}s BC`;
-      if (start === 0) return "1–100 AD";
-      return `${start}s`;
+    fmtCentury(b) {
+      const { start, span = 100 } = b;
+      if (span === 100) {
+        if (start < 0) return `${-start}s BC`;
+        if (start === 0) return "1–100 AD";
+        return `${start}s`;
+      }
+      // merged buckets read as a range: "1000–500 BC", "500 BC–1 AD", "1500–2000"
+      const end = start + span;
+      if (end <= 0) return `${-start}–${-end || 1} BC`;
+      if (start < 0) return `${-start} BC–${end}`;
+      return `${start}–${end}`;
     },
     initials(p) {
       return p.name
@@ -233,10 +255,12 @@ export default {
       if (this.$route.name !== "home") this.$router.push("/");
     },
 
-    zoomCentury(start) {
+    zoomCentury(b) {
       if (this.lastMoved) return;
       this.goHome();
-      this.flyTo(start + 50, 150, 1400);
+      // dive into the bubble's own range (a 500y bucket opens onto its centuries)
+      const span = b.span ?? 100;
+      this.flyTo(b.start + span / 2, span * 1.5, 1400);
     },
 
     pick(p) {
@@ -409,11 +433,11 @@ export default {
           v-for="b in bubbles"
           :key="b.start"
           class="bubble"
-          @click.stop="zoomCentury(b.start)"
+          @click.stop="zoomCentury(b)"
         >
           <circle :cx="b.x" :cy="b.y" :r="b.r" class="halo" />
           <circle :cx="b.x" :cy="b.y" :r="Math.max(4, b.r * 0.12)" class="core" />
-          <text v-if="b.r > 13" :x="b.x" :y="b.y - b.r - 16" class="century">{{ fmtCentury(b.start) }}</text>
+          <text v-if="b.r > 13" :x="b.x" :y="b.y - b.r - 16" class="century">{{ fmtCentury(b) }}</text>
           <text v-if="b.r > 13" :x="b.x" :y="b.y + b.r + 26" class="count">{{ b.count.toLocaleString("en-US") }} people</text>
         </g>
       </g>

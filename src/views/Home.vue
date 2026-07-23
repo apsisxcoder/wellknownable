@@ -154,6 +154,14 @@ header {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* the row owns the width; the searchbox shrinks inside it so the dice
+     never pushes past the viewport edge on phones */
+  width: min(520px, 92vw);
+}
+
+.searchrow :deep(.searchbox) {
+  flex: 1;
+  width: auto;
 }
 
 .dice {
@@ -246,11 +254,11 @@ footer a:hover {
   }
 
   .emblem {
-    height: 52px;
+    height: 38px;
   }
 
   .word {
-    font-size: 28px;
+    font-size: 22px;
   }
 
   .tagline {

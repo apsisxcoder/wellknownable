@@ -19,13 +19,57 @@ export default {
     // an /alive-in page can deep-link here with ?year=1492 — start on that year
     const q = parseInt(this.$route.query.year, 10);
     const year = Number.isFinite(q) ? Math.max(MIN_YEAR, Math.min(MAX_YEAR, q)) : 1500;
-    return { year, MIN_YEAR, MAX_YEAR, aliveCount: 0, rolling: false };
+    return {
+      year, MIN_YEAR, MAX_YEAR, aliveCount: 0, battleCount: 0, rolling: false,
+      mode: "people", // 👤 people | ⚔️ wars — one world at a time, search follows
+      warData: null, // { battles, wars } — lazy-fetched, globe-only payload
+      selectedBattleId: null,
+    };
   },
 
   computed: {
     ...mapStores(usePeopleStore),
     yearLabel() {
       return this.year < 0 ? `${-this.year} BC` : `${this.year}`;
+    },
+    selectedBattle() {
+      if (!this.selectedBattleId || !this.warData) return null;
+      return this.warData.battles.find((b) => b.id === this.selectedBattleId) ?? null;
+    },
+    // wars whose range covers the slider year — their battles ARE the war map
+    activeWarIds() {
+      if (!this.warData) return new Set();
+      const y = this.year;
+      return new Set(this.warData.wars.filter((w) => w.start <= y && (w.end ?? MAX_YEAR) >= y).map((w) => w.id));
+    },
+    // who fought: the battle's own sides; else the parent war's sides; else a
+    // flat combatant list (when Wikidata doesn't say who stood where)
+    battleSides() {
+      const b = this.selectedBattle;
+      if (!b) return null;
+      const war = b.warId && this.warData ? this.warData.wars.find((w) => w.id === b.warId) : null;
+      if (b.sides) return { left: b.sides[0], right: b.sides[1], src: "battle" };
+      if (war?.sides) return { left: war.sides[0], right: war.sides[1], src: "war" };
+      if (b.combatants?.length) return { flat: b.combatants, src: "battle" };
+      if (war?.participants?.length) return { flat: war.participants, src: "war" };
+      return null;
+    },
+
+    // what the search box searches: people, or wars+battles (mode-driven)
+    searchPool() {
+      if (this.mode !== "wars") return null;
+      if (!this.warData) return [];
+      const fy = (y) => (y < 0 ? `${-y} BC` : `${y}`);
+      return [
+        ...this.warData.wars.map((w) => ({
+          kind: "war", id: w.id, name: w.name, icon: "⚔️", sitelinks: w.sitelinks,
+          meta: `${fy(w.start)} – ${w.end != null ? fy(w.end) : "ongoing"} · war`,
+        })),
+        ...this.warData.battles.map((b) => ({
+          kind: "battle", id: b.id, name: b.name, icon: "🗡️", sitelinks: b.sitelinks,
+          meta: `${fy(b.year)}${b.warName ? ` · ${b.warName}` : ""}`,
+        })),
+      ];
     },
   },
 
@@ -37,11 +81,15 @@ export default {
       if (sel && !(sel.birthYear <= this.year && this.endYear(sel) >= this.year)) {
         this.peopleStore.clear();
       }
+      // same rule for a selected battle that drops off the war map
+      const b = this.selectedBattle;
+      if (b && !this.battleVisible(b, this.year)) this.selectedBattleId = null;
       this.scheduleRefresh();
     },
-    "peopleStore.selectedId"() {
+    "peopleStore.selectedId"(id) {
       // just re-highlight; DON'T move the camera — clicking a visible pin should
       // never yank you out of your zoom. (Search flies explicitly, see onSearch.)
+      if (id) this.selectedBattleId = null; // one card at a time
       this.scheduleRefresh();
     },
   },
@@ -53,6 +101,18 @@ export default {
     this.peopleStore.clear();
     this.initGlobe();
     this.refreshMarkers();
+
+    // war layer data: globe-only payload (~260 KB), fetched after the globe is
+    // already interactive so it never delays first render
+    fetch(`${import.meta.env.BASE_URL}data/wars.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) {
+          this.warData = d;
+          this.scheduleRefresh();
+        }
+      })
+      .catch(() => {});
 
     this.onResize = () => {
       if (!this.globe) return;
@@ -80,13 +140,23 @@ export default {
       return MAX_YEAR - p.birthYear <= 100 ? MAX_YEAR : p.birthYear + 80;
     },
 
-    // random famous person: fly to them like a search pick (the 🎲 button)
+    // random famous person — or, on the war map, a random famous battle (the 🎲)
     surprise() {
+      this.rolling = true;
+      setTimeout(() => (this.rolling = false), 700);
+      if (this.mode === "wars" && this.warData) {
+        const pool = this.warData.battles.slice(0, 400);
+        const b = pool[Math.floor(Math.random() * pool.length)];
+        if (!b) return;
+        if (typeof window.gtag === "function") window.gtag("event", "surprise_me", { battle_name: b.name });
+        this.year = Math.max(MIN_YEAR, Math.min(MAX_YEAR, b.year));
+        this.selectBattle(b);
+        if (this.globe) this.globe.pointOfView({ lat: b.coord.lat, lng: b.coord.lon, altitude: 0.75 }, 1300);
+        return;
+      }
       const pool = this.peopleStore.peopleByFame.slice(0, 2000);
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (!p) return;
-      this.rolling = true;
-      setTimeout(() => (this.rolling = false), 700);
       if (typeof window.gtag === "function") window.gtag("event", "surprise_me", { person_name: p.name });
       this.onSearch(p);
     },
@@ -98,13 +168,72 @@ export default {
       this.year = Math.max(MIN_YEAR, Math.min(MAX_YEAR, mid));
       this.peopleStore.select(p.id);
       if (p.coord && this.globe) {
-        this.globe.pointOfView({ lat: p.coord.lat, lng: p.coord.lon, altitude: 1.3 }, 1000);
+        // close enough that WHERE they are is obvious, not just that they exist
+        this.globe.pointOfView({ lat: p.coord.lat, lng: p.coord.lon, altitude: 0.75 }, 1300);
       }
     },
 
-    jumpTo(v) {
-      const n = parseInt(v, 10);
+    jumpTo(e) {
+      const n = parseInt(e.target.value, 10);
       if (!Number.isNaN(n)) this.year = Math.max(MIN_YEAR, Math.min(MAX_YEAR, n));
+      // clear the box: the readout is the source of truth, and an out-of-range
+      // entry (2068) must not linger next to the clamped year it didn't become
+      e.target.value = "";
+      e.target.blur();
+    },
+
+    // battles are a single year; sieges may span (year..endYear)
+    battleInYear(b, y) {
+      return b.year === y || (b.endYear != null && b.year <= y && b.endYear >= y);
+    },
+
+    // on the war map a battle shows while its war is active, not just its own
+    // year — but within ±20y of the slider, or century-spanning conflict series
+    // (Roman–Persian Wars run 54 BC to 628 AD as ONE Wikidata entry) would keep
+    // parading battles from 260 years earlier
+    battleVisible(b, y) {
+      if (this.battleInYear(b, y)) return true;
+      if (b.warId == null || !this.activeWarIds.has(b.warId)) return false;
+      const dist = b.endYear != null && y > b.year ? Math.max(0, y - b.endYear) : Math.abs(b.year - y);
+      return dist <= 20;
+    },
+
+    setMode(m) {
+      if (this.mode === m) return;
+      this.mode = m;
+      this.peopleStore.clear();
+      this.selectedBattleId = null;
+      if (typeof window.gtag === "function") window.gtag("event", "globe_mode", { mode: m });
+      this.scheduleRefresh();
+    },
+
+    // search select: people mode gets a person, wars mode a war or battle
+    onPick(item) {
+      if (this.mode !== "wars") return this.onSearch(item);
+      if (item.kind === "battle") {
+        const b = this.warData.battles.find((x) => x.id === item.id);
+        if (!b) return;
+        this.year = Math.max(MIN_YEAR, Math.min(MAX_YEAR, b.year));
+        this.selectBattle(b);
+        if (this.globe) this.globe.pointOfView({ lat: b.coord.lat, lng: b.coord.lon, altitude: 0.75 }, 1300);
+      } else {
+        const w = this.warData.wars.find((x) => x.id === item.id);
+        if (!w) return;
+        // land mid-war and zoom out enough to see the whole theater light up
+        this.year = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.round((w.start + (w.end ?? w.start)) / 2)));
+        const first = this.warData.battles.find((b) => b.warId === w.id);
+        if (first && this.globe) this.globe.pointOfView({ lat: first.coord.lat, lng: first.coord.lon, altitude: 1.9 }, 1000);
+      }
+    },
+
+    selectBattle(b) {
+      this.selectedBattleId = b.id;
+      this.peopleStore.clear(); // one card at a time
+      if (typeof window.gtag === "function") window.gtag("event", "select_battle", { battle_name: b.name });
+    },
+
+    fmtOneYear(y) {
+      return y < 0 ? `${-y} BC` : `${y}`;
     },
     fmtYears(p) {
       const b = p.birthYear < 0 ? `${-p.birthYear} BC` : `${p.birthYear}`;
@@ -136,7 +265,7 @@ export default {
         .htmlLat((d) => d.lat)
         .htmlLng((d) => d.lng)
         .htmlAltitude((d) => d.alt)
-        .htmlElement((d) => this.makePin(d));
+        .htmlElement((d) => (d.b ? this.makeWarPin(d) : this.makePin(d)));
 
       this.globe.pointOfView({ lat: 30, lng: 20, altitude: 2.5 });
       const c = this.globe.controls();
@@ -190,6 +319,20 @@ export default {
       return el;
     },
 
+    // crossed-swords pin for a battle — visually distinct from the gold portraits
+    makeWarPin(d) {
+      const b = d.b;
+      const el = document.createElement("div");
+      el.className = "wpin" + (d.sel ? " sel" : "");
+      const s = d.size;
+      el.innerHTML = `<span class="wav" style="width:${s}px;height:${s}px;font-size:${Math.round(s * 0.52)}px">⚔️</span><span class="nm">${b.name}</span>`;
+      el.onclick = (e) => {
+        e.stopPropagation();
+        this.selectBattle(b);
+      };
+      return el;
+    },
+
     scheduleRefresh() {
       if (this._raf) return;
       this._raf = requestAnimationFrame(() => {
@@ -200,6 +343,7 @@ export default {
 
     refreshMarkers() {
       if (!this.globe) return;
+      if (this.mode === "wars") return this.refreshWarMarkers();
       const y = this.year;
       const selId = this.peopleStore.selectedId;
       const alive = [];
@@ -262,6 +406,38 @@ export default {
       // portraits only — the fat cylinder "sticks" looked terrible when zoomed in
       this.globe.htmlElementsData(markers);
     },
+
+    // ⚔️ mode: the battles of every war active in the slider year — a war map,
+    // not a year snapshot (1916 shows Verdun AND 1915's Gallipoli: same war)
+    refreshWarMarkers() {
+      const y = this.year;
+      const selB = this.selectedBattleId;
+      const visible = this.warData ? this.warData.battles.filter((b) => this.battleVisible(b, y)) : [];
+      this.battleCount = visible.length;
+
+      // fame-first cap, scaled by zoom like the people pins
+      const alt = this.globe.pointOfView().altitude;
+      const t = Math.max(0, Math.min(1, (2.5 - alt) / (2.5 - 0.3)));
+      const cap = Math.round(24 + t * 56); // 24–80 swords
+      const shown = visible.slice(0, cap);
+      if (selB && !shown.some((b) => b.id === selB)) {
+        const sb = visible.find((b) => b.id === selB);
+        if (sb) shown.push(sb);
+      }
+
+      const markers = shown.map((b) => {
+        const f = Math.max(0, Math.min(1, (Math.sqrt(b.sitelinks) - 3) / 12));
+        return {
+          b,
+          lat: b.coord.lat,
+          lng: b.coord.lon,
+          sel: b.id === selB,
+          size: Math.round(26 + f * 22), // 26–48 px
+          alt: 0.004 + f * 0.02,
+        };
+      });
+      this.globe.htmlElementsData(markers);
+    },
   },
 };
 </script>
@@ -277,8 +453,14 @@ export default {
     </header>
 
     <div class="gsearch">
-      <SearchBox @select="onSearch" />
-      <button class="dice" :class="{ rolling }" title="Surprise me — fly to a random famous person" @click="surprise">🎲</button>
+      <div class="mode-switch" role="radiogroup" aria-label="Globe mode">
+        <button :class="{ on: mode === 'people' }" @click="setMode('people')">👤 People</button>
+        <button :class="{ on: mode === 'wars' }" @click="setMode('wars')">⚔️ Wars</button>
+      </div>
+      <div class="searchline">
+        <SearchBox :pool="searchPool" @select="onPick" />
+        <button class="dice" :class="{ rolling }" :title="mode === 'wars' ? 'Surprise me — fly to a random battle' : 'Surprise me — fly to a random famous person'" @click="surprise">🎲</button>
+      </div>
     </div>
 
     <div ref="globe" class="globe-canvas"></div>
@@ -288,13 +470,15 @@ export default {
     <div class="year-panel">
       <div class="year-readout">
         <span class="yr">{{ yearLabel }}</span>
-        <span class="cnt">{{ aliveCount.toLocaleString("en-US") }} alive</span>
+        <span class="cnt">
+          <template v-if="mode === 'wars'">{{ battleCount.toLocaleString("en-US") }} battles</template>
+          <template v-else>{{ aliveCount.toLocaleString("en-US") }} alive</template>
+        </span>
         <input
           class="jump"
           type="number"
           placeholder="jump to year"
-          @change="jumpTo($event.target.value)"
-          @keyup.enter="jumpTo($event.target.value)"
+          @change="jumpTo($event)"
         />
       </div>
       <input type="range" :min="MIN_YEAR" :max="MAX_YEAR" step="1" v-model.number="year" />
@@ -302,6 +486,31 @@ export default {
     </div>
 
     <PersonCard />
+
+    <transition name="card">
+      <aside v-if="selectedBattle" class="war-card">
+        <button class="close" aria-label="Close" @click="selectedBattleId = null">×</button>
+        <div class="swords">⚔️</div>
+        <h2>{{ selectedBattle.name }}</h2>
+        <p class="years">
+          {{ fmtOneYear(selectedBattle.year) }}<template v-if="selectedBattle.endYear && selectedBattle.endYear !== selectedBattle.year"> – {{ fmtOneYear(selectedBattle.endYear) }}</template>
+        </p>
+        <p v-if="battleSides && battleSides.src === 'war'" class="sides-label">
+          {{ battleSides.left ? "sides in the wider war" : "involved in the wider war" }}
+        </p>
+        <div v-if="battleSides && battleSides.left" class="sides-grid">
+          <ul class="side left"><li v-for="n in battleSides.left" :key="n">{{ n }}</li></ul>
+          <div class="vs-col"><span class="line"></span><span class="vs">⚔</span><span class="line"></span></div>
+          <ul class="side right"><li v-for="n in battleSides.right" :key="n">{{ n }}</li></ul>
+        </div>
+        <p v-else-if="battleSides" class="sides">{{ battleSides.flat.join(" · ") }}</p>
+        <p v-if="selectedBattle.warName" class="ofwar">part of <strong>{{ selectedBattle.warName }}</strong></p>
+        <div class="foot">
+          <span class="badge">Wikipedia in {{ selectedBattle.sitelinks }} languages</span>
+          <a :href="`https://www.wikidata.org/wiki/${selectedBattle.id}`" target="_blank" rel="noopener">source ↗</a>
+        </div>
+      </aside>
+    </transition>
   </div>
 </template>
 
@@ -348,17 +557,55 @@ export default {
 
 .gsearch {
   position: absolute;
-  top: 68px;
+  top: 62px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
   width: min(520px, 90vw);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mode-switch {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(13, 18, 34, 0.8);
+  padding: 3px;
+  backdrop-filter: blur(8px);
+}
+
+.mode-switch button {
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  font: 500 13px var(--font-ui, "Inter", sans-serif);
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.mode-switch button.on {
+  background: rgba(224, 180, 92, 0.16);
+  color: var(--gold);
+}
+
+.mode-switch button.on:last-child {
+  background: rgba(224, 122, 92, 0.16);
+  color: #e07a5c;
+}
+
+.searchline {
+  width: 100%;
+  display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.gsearch :deep(.searchbox) {
+.searchline :deep(.searchbox) {
   flex: 1;
   width: auto;
 }
@@ -520,7 +767,210 @@ export default {
   margin-top: 4px;
 }
 
+/* battle card — the person card's layout with an ember-red accent */
+.war-card {
+  position: absolute;
+  right: 28px;
+  bottom: 42px;
+  z-index: 20;
+  width: 300px;
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid rgba(224, 122, 92, 0.35);
+  border-radius: 22px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  text-align: center;
+}
+
+.war-card .close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.war-card .close:hover {
+  color: var(--ink);
+}
+
+.war-card .swords {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.war-card h2 {
+  margin: 0 0 4px;
+  font: 600 20px var(--font-display);
+  color: var(--ink);
+}
+
+.war-card .years {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #e07a5c;
+  letter-spacing: 0.03em;
+}
+
+.war-card .sides {
+  margin: 0 0 8px;
+  font: 600 13.5px var(--font-ui, "Inter", sans-serif);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.war-card .sides-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* two camps, a divider line down the middle, crossed swords at its heart */
+.war-card .sides-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 2px 0 10px;
+}
+
+.war-card .side {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font: 600 12.5px var(--font-ui, "Inter", sans-serif);
+  color: var(--ink);
+  line-height: 1.45;
+  text-align: left;
+}
+
+/* bullet + hanging indent: a wrapped multi-word name stays visually ONE entry
+   instead of blurring into its neighbors */
+.war-card .side li {
+  position: relative;
+  padding-left: 12px;
+  margin-bottom: 5px;
+}
+
+.war-card .side li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #e07a5c;
+}
+
+.war-card .vs-col {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.war-card .vs-col .line {
+  flex: 1;
+  width: 1px;
+  min-height: 6px;
+  background: rgba(224, 122, 92, 0.4);
+}
+
+.war-card .vs {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #e07a5c;
+  border: 1px solid rgba(224, 122, 92, 0.45);
+  border-radius: 50%;
+  background: rgba(224, 122, 92, 0.08);
+  margin: 4px 0;
+}
+
+.war-card .ofwar {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.war-card .ofwar strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.war-card .foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.war-card .badge {
+  font-size: 11.5px;
+  color: #e07a5c;
+  background: rgba(224, 122, 92, 0.1);
+  border: 1px solid rgba(224, 122, 92, 0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.war-card .foot a {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.war-card .foot a:hover {
+  color: var(--ink);
+}
+
+.card-enter-active,
+.card-leave-active {
+  transition: opacity 0.35s, transform 0.35s;
+}
+
+.card-enter-from,
+.card-leave-to {
+  opacity: 0;
+  transform: translateY(16px) scale(0.97);
+}
+
 @media (max-width: 640px) {
+  /* same bottom-sheet treatment as the person card */
+  .war-card {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    max-height: 68vh; /* fallback */
+    max-height: 68dvh;
+    overflow-y: auto;
+    /* iOS WebKit won't scroll the sheet without being told the vertical pan
+       gesture belongs to it */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* the close button rides along while the sheet scrolls — always reachable */
+  .war-card .close {
+    position: sticky;
+    top: 0;
+    margin-left: auto;
+    display: block;
+    z-index: 2;
+  }
+
   .gheader {
     padding: 12px 14px;
   }
@@ -553,11 +1003,14 @@ export default {
   align-items: center;
   gap: 3px;
   cursor: pointer;
-  pointer-events: auto;
+  /* the wrapper is as wide as the (hidden) name label — mouse belongs to the
+     avatar circle only, so a long label can't shadow the pin next door */
+  pointer-events: none;
   transform: translateY(-50%);
   user-select: none;
 }
 .gpin .av {
+  pointer-events: auto;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -599,6 +1052,55 @@ export default {
 }
 .gpin:hover .nm,
 .gpin.sel .nm {
+  opacity: 1;
+}
+
+/* battle pin: ember-red crossed swords, softly pulsing (global: rendered by globe.gl) */
+.wpin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  /* same as .gpin: mouse belongs to the swords circle, not the label-wide box */
+  pointer-events: none;
+  transform: translateY(-50%);
+  user-select: none;
+}
+.wpin .wav {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(224, 122, 92, 0.75);
+  background: rgba(46, 18, 12, 0.82);
+  box-shadow: 0 0 0 0 rgba(224, 122, 92, 0.45);
+  animation: warpulse 2.2s ease-out infinite;
+  transition: transform 0.15s, border-color 0.15s;
+}
+@keyframes warpulse {
+  0% { box-shadow: 0 0 0 0 rgba(224, 122, 92, 0.45); }
+  70% { box-shadow: 0 0 0 9px rgba(224, 122, 92, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(224, 122, 92, 0); }
+}
+.wpin .nm {
+  font: 500 11px "Inter", sans-serif;
+  color: #f3ddd6;
+  background: rgba(46, 18, 12, 0.88);
+  border-radius: 6px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.wpin:hover .wav,
+.wpin.sel .wav {
+  transform: scale(1.18);
+  border-color: #e07a5c;
+}
+.wpin:hover .nm,
+.wpin.sel .nm {
   opacity: 1;
 }
 </style>
